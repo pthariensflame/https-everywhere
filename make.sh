@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+z#!/usr/bin/env bash
 
 # Build an HTTPS Everywhere .crx & .xpi extension
 #
@@ -19,7 +19,19 @@
 # but these .crx files won't detect and upgrade to official HTTPS Everywhere
 # releases signed by EFF :/.  We should find a more elegant arrangement.
 
-! getopt --test > /dev/null
+# Check whether we're on macOS, and therefore need to
+# use brew-installed utils
+if type brew >/dev/null 2>&1; then
+    SED=$(brew --prefix gnu-sed)/bin/gsed
+    GETOPT=$(brew --prefix gnu-getopt)/bin/getopt
+    PYTHON=$(brew --prefix python)/bin/python3
+else
+    SED=sed
+    GETOPT=getopt
+    PYTHON=python3.6
+fi
+
+! $GETOPT --test > /dev/null
 if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
   echo 'I’m sorry, `getopt --test` failed in this environment.'
   exit 1
@@ -27,7 +39,7 @@ fi
 
 OPTIONS=eck:
 LONGOPTS=remove-extension-update,remove-update-channels,key:
-! PARSED=$(getopt --options=$OPTIONS --longoptions=$LONGOPTS --name "$0" -- "$@")
+! PARSED=$($GETOPT --options=$OPTIONS --longoptions=$LONGOPTS --name "$0" -- "$@")
 if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
   # e.g. return value is 1
   #  then getopt has complained about wrong arguments to stdout
@@ -85,7 +97,7 @@ if [ -n "$1" ]; then
   git submodule update --recursive -f
 fi
 
-VERSION=`python3.6 -c "import json ; print(json.loads(open('chromium/manifest.json').read())['version'])"`
+VERSION=`$PYTHON -c "import json ; print(json.loads(open('chromium/manifest.json').read())['version'])"`
 
 echo "Building version" $VERSION
 
@@ -104,8 +116,8 @@ cp -a ../../chromium/* ./
 # Turn the Firefox translations into the appropriate Chrome format:
 rm -rf _locales/
 mkdir _locales/
-python3.6 ../../utils/chromium-translations.py ../../translations/ _locales/
-python3.6 ../../utils/chromium-translations.py ../../src/chrome/locale/ _locales/
+$PYTHON ../../utils/chromium-translations.py ../../translations/ _locales/
+$PYTHON ../../utils/chromium-translations.py ../../src/chrome/locale/ _locales/
 do_not_ship="*.py *.xml"
 rm -f $do_not_ship
 
@@ -115,11 +127,11 @@ cp ../../lib-wasm/pkg/*.js wasm
 
 cd ../..
 
-python3.6 ./utils/merge-rulesets.py || exit 5
+$PYTHON ./utils/merge-rulesets.py || exit 5
 
 cp src/chrome/content/rules/default.rulesets pkg/crx-cws/rules/default.rulesets
 
-sed -i -e "s/VERSION/$VERSION/g" pkg/crx-cws/manifest.json
+$SED -i -e "s/VERSION/$VERSION/g" pkg/crx-cws/manifest.json
 
 for x in `cat .build_exclusions`; do
   rm -rf pkg/crx-cws/$x
@@ -133,16 +145,16 @@ cp -a src/META-INF pkg/xpi-eff
 
 # Remove the 'applications' manifest key from the crx version of the extension, change the 'author' string to a hash, and add the "update_url" manifest key
 # "update_url" needs to be present to avoid problems reported in https://bugs.chromium.org/p/chromium/issues/detail?id=805755
-python3.6 -c "import json; m=json.loads(open('pkg/crx-cws/manifest.json').read()); m['author']={'email': 'eff.software.projects@gmail.com'}; del m['applications']; m['update_url'] = 'https://clients2.google.com/service/update2/crx'; open('pkg/crx-cws/manifest.json','w').write(json.dumps(m,indent=4,sort_keys=True))"
-python3.6 -c "import json; m=json.loads(open('pkg/crx-eff/manifest.json').read()); m['author']={'email': 'eff.software.projects@gmail.com'}; del m['applications']; open('pkg/crx-eff/manifest.json','w').write(json.dumps(m,indent=4,sort_keys=True))"
+$PYTHON -c "import json; m=json.loads(open('pkg/crx-cws/manifest.json').read()); m['author']={'email': 'eff.software.projects@gmail.com'}; del m['applications']; m['update_url'] = 'https://clients2.google.com/service/update2/crx'; open('pkg/crx-cws/manifest.json','w').write(json.dumps(m,indent=4,sort_keys=True))"
+$PYTHON -c "import json; m=json.loads(open('pkg/crx-eff/manifest.json').read()); m['author']={'email': 'eff.software.projects@gmail.com'}; del m['applications']; open('pkg/crx-eff/manifest.json','w').write(json.dumps(m,indent=4,sort_keys=True))"
 # Remove the 'update_url' manifest key from the xpi version of the extension delivered to AMO
-python3.6 -c "import json; m=json.loads(open('pkg/xpi-amo/manifest.json').read()); del m['applications']['gecko']['update_url']; m['applications']['gecko']['id'] = 'https-everywhere@eff.org'; open('pkg/xpi-amo/manifest.json','w').write(json.dumps(m,indent=4,sort_keys=True))"
+$PYTHON -c "import json; m=json.loads(open('pkg/xpi-amo/manifest.json').read()); del m['applications']['gecko']['update_url']; m['applications']['gecko']['id'] = 'https-everywhere@eff.org'; open('pkg/xpi-amo/manifest.json','w').write(json.dumps(m,indent=4,sort_keys=True))"
 
 # If the --remove-extension-update flag is set, ensure the extension is unable to update
 if $REMOVE_EXTENSION_UPDATE; then
   echo "Flag --remove-extension-update specified.  Removing the XPI extensions' ability to update."
-  python3.6 -c "import json; m=json.loads(open('pkg/xpi-amo/manifest.json').read()); m['applications']['gecko']['update_url'] = 'https://127.0.0.1'; open('pkg/xpi-amo/manifest.json','w').write(json.dumps(m,indent=4,sort_keys=True))"
-  python3.6 -c "import json; m=json.loads(open('pkg/xpi-eff/manifest.json').read()); m['applications']['gecko']['update_url'] = 'https://127.0.0.1'; open('pkg/xpi-eff/manifest.json','w').write(json.dumps(m,indent=4,sort_keys=True))"
+  $PYTHON -c "import json; m=json.loads(open('pkg/xpi-amo/manifest.json').read()); m['applications']['gecko']['update_url'] = 'https://127.0.0.1'; open('pkg/xpi-amo/manifest.json','w').write(json.dumps(m,indent=4,sort_keys=True))"
+  $PYTHON -c "import json; m=json.loads(open('pkg/xpi-eff/manifest.json').read()); m['applications']['gecko']['update_url'] = 'https://127.0.0.1'; open('pkg/xpi-eff/manifest.json','w').write(json.dumps(m,indent=4,sort_keys=True))"
 fi
 
 # If the --remove-update-channels flag is set, remove all out-of-band update channels

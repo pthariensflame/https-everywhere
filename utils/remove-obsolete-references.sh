@@ -2,6 +2,13 @@
 # Remove obsolete references to child rulesets which
 # has been renamed/ deleted
 
+# Check whether we're on macOS, and therefore need to
+# use brew-installed utils
+if type brew >/dev/null 2>&1; then
+    SED=$(brew --prefix gnu-sed)/bin/gsed
+else
+    SED=sed
+fi
 
 # Change directory to git root; taken from ../test/test.sh
 if [ -n "$GIT_DIR" ]
@@ -20,16 +27,16 @@ cd src/chrome/content/rules
 EXIT_CODE=0
 
 # List of file(s) which contain at least one reference
-FILES=`egrep -l '^\s*[-|+]\s*([^ ]*\.xml)\s*$' *.xml`
+FILES=`find . -name '*.xml' -print0 | xargs -0 egrep -l '^\s*[-|+]\s*([^ ]*\.xml)\s*$' | xargs -n 1 basename --`
 
 while read FILE; do
     # List of referenced rulesets
-    REFS=`sed -n 's/^\s*[-|+]\s*\([^ ]*\.xml\)\s*$/\1/gp' "$FILE"`
+    REFS=`$SED -n 's/^\s*[-|+]\s*\([^ ]*\.xml\)\s*$/\1/gp' "$FILE" | xargs -n 1 basename --`
 
     while read REF; do
         if [ ! -f "$REF" ]; then
             echo >&2 "ERROR src/chrome/content/rules/$FILE: Dangling reference to $REF"
-            sed -i "/^\s*[-|+]\s*$REF$/d" "$FILE"
+            $SED -i "/^\s*[-|+]\s*$REF$/d" "$FILE"
             EXIT_CODE=1
         fi
     done <<< "$REFS"

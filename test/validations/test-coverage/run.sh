@@ -4,6 +4,14 @@
 # coverage, according to the ruleset checker.
 #
 
+# Check whether we're on macOS, and therefore need to
+# use brew-installed utils
+if type brew >/dev/null 2>&1; then
+    PYTHON=$(brew --prefix python)/bin/python3
+else
+    PYTHON=python3.6
+fi
+
 # Get to the repo root directory, even when we're symlinked as a hook.
 if [ -n "$GIT_DIR" ]
 then
@@ -24,10 +32,10 @@ if ! [ -d test/rules ] ; then
   exit 1
 fi
 if [ $# -gt 0 ] ; then
-  exec python3.6 test/rules/src/https_everywhere_checker/check_rules.py \
+  exec $PYTHON test/rules/src/https_everywhere_checker/check_rules.py \
     test/rules/coverage.checker.config "$@"
 fi
-if ! python3.6 test/rules/src/https_everywhere_checker/check_rules.py \
+if ! $PYTHON test/rules/src/https_everywhere_checker/check_rules.py \
       test/rules/coverage.checker.config; then
   echo '
 Ruleset test coverage was insufficient.

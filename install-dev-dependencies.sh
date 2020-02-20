@@ -28,6 +28,9 @@ else
   ARCH=32
 fi
 
+# overriden below where necessary
+PIP=pip3
+
 # debian based installation
 if type apt-get>/dev/null 2>&1;  then
   $SUDO_SHIM apt-get update
@@ -60,10 +63,11 @@ if type apt-get>/dev/null 2>&1;  then
 elif type brew >/dev/null 2>&1; then
   brew list python &>/dev/null || brew install python
   brew cask install chromedriver
-  brew install libxml2 gnu-sed
+  brew install libxml2 gnu-sed gnu-getopt
   if ! echo $PATH | grep -ql /usr/local/bin ; then
     echo '/usr/local/bin not found in $PATH, please add it.'
   fi
+  PIP=$(brew --prefix python)/bin/pip3
 
 # distros that use rpm (Fedora, Suse, CentOS) installation
 elif type dnf >/dev/null 2>&1; then
@@ -104,12 +108,12 @@ git submodule init
 git submodule update
 
 # Install Python packages
-pip3 install --user -r requirements.txt
+$PIP install --user -r requirements.txt
 cd test/rules
-pip3 install --user -r requirements.txt
+$PIP install --user -r requirements.txt
 cd -
 cd test/chromium
-pip3 install --user -r requirements.txt
+$PIP install --user -r requirements.txt
 cd -
 
 # Install git hook to run tests before pushing.

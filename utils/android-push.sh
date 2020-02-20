@@ -1,6 +1,14 @@
 #!/bin/bash
 set -o errexit
 
+# Check whether we're on macOS, and therefore need to
+# use brew-installed utils
+if type brew >/dev/null 2>&1; then
+    SED=$(brew --prefix gnu-sed)/bin/gsed
+else
+    SED=sed
+fi
+
 cd $(dirname $0)
 XPI_NAME=$1
 ANDROID_APP_ID=org.mozilla.firefox
@@ -28,7 +36,7 @@ if type adb > /dev/null 2>/dev/null ; then
   trap on_exit EXIT SIGINT
 
   if adb devices >/dev/null 2>/dev/null ; then
-    ADB_FOUND=`adb devices | grep -v 'offline$' | tail -2 | head -1 | cut -f 1 | sed 's/ *$//g'`
+    ADB_FOUND=`adb devices | grep -v 'offline$' | tail -2 | head -1 | cut -f 1 | $SED 's/ *$//g'`
     if [ "$ADB_FOUND" != "List of devices attached" ]; then
       echo Pushing "$XPI_NAME" to /sdcard/"$XPI_NAME"
       adb push "../$XPI_NAME" /sdcard/"$XPI_NAME"

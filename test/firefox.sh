@@ -1,6 +1,14 @@
 #!/bin/bash -ex
 # Run Firefox tests for HTTPS Everywhere
 
+# Check whether we're on macOS, and therefore need to
+# use brew-installed utils
+if type brew >/dev/null 2>&1; then
+    PYTHON=$(brew --prefix python)/bin/python3
+else
+    PYTHON=python3.6
+fi
+
 # Get to the repo root directory, even when we're symlinked as a hook.
 if [ -n "$GIT_DIR" ]
 then
@@ -58,8 +66,8 @@ else
 
   PATH=/home/user/geckodriver:$PATH
   if [ -n "$FIREFOX" ]; then
-    $XVFB_RUN python3.6 test/script.py Firefox "$PROFILE_DIRECTORY" $FIREFOX
+    $XVFB_RUN $PYTHON test/script.py Firefox "$PROFILE_DIRECTORY" $FIREFOX
   else
-    $XVFB_RUN python3.6 test/script.py Firefox "$PROFILE_DIRECTORY"
+    $XVFB_RUN $PYTHON test/script.py Firefox "$PROFILE_DIRECTORY"
   fi
 fi
